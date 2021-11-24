@@ -241,8 +241,11 @@ update msg model =
                                 model.state
                       }
                     , if newRemaining <= 0 then
-                        Process.sleep (5 * 1000)
-                            |> Task.perform (\_ -> StartOver)
+                        Cmd.batch
+                            [ Process.sleep (5 * 1000)
+                                |> Task.perform (\_ -> StartOver)
+                            , speak "Done"
+                            ]
 
                       else
                         Cmd.none
