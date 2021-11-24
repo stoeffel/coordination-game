@@ -31,6 +31,7 @@ type State
     = NotStarted
     | Started Game
     | Paused Game
+    | Done
 
 
 type Game
@@ -103,6 +104,9 @@ view model =
                 ]
              <|
                 case model.state of
+                    Done ->
+                        [ E.text "Done" ]
+
                     NotStarted ->
                         [ Input.button
                             [ E.centerX
@@ -180,6 +184,7 @@ type Msg
     | NextCommand Commands
     | AdjustTime Float
     | TickSeconds
+    | StartOver
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -187,6 +192,9 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
+
+        StartOver ->
+            ( { model | state = NotStarted }, Cmd.none )
 
         AdjustTime minutes ->
             ( { model | timer = minutes * 60, remaining = minutes * 60 }, Cmd.none )
@@ -222,8 +230,22 @@ update msg model =
                             else
                                 40
                     in
-                    ( { model | remaining = newRemaining, bpm = newBpm }
-                    , Cmd.none
+                    ( { model
+                        | remaining = newRemaining
+                        , bpm = newBpm
+                        , state =
+                            if newRemaining <= 0 then
+                                Done
+
+                            else
+                                model.state
+                      }
+                    , if newRemaining <= 0 then
+                        Process.sleep (5 * 1000)
+                            |> Task.perform (\_ -> StartOver)
+
+                      else
+                        Cmd.none
                     )
 
                 _ ->
