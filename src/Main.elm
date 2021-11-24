@@ -127,12 +127,12 @@ view model =
                                     (E.text
                                         ("Timer: "
                                             ++ String.fromFloat model.timer
-                                            ++ "minutes"
+                                            ++ "s"
                                         )
                                     )
-                            , min = 1
-                            , max = 5
-                            , step = Just 0.5
+                            , min = 60
+                            , max = 300
+                            , step = Just 30
                             , value = model.timer
                             , thumb = Input.defaultThumb
                             }
@@ -197,7 +197,7 @@ update msg model =
             ( { model | state = NotStarted }, Cmd.none )
 
         AdjustTime minutes ->
-            ( { model | timer = minutes * 60, remaining = minutes * 60 }, Cmd.none )
+            ( { model | timer = minutes, remaining = minutes }, Cmd.none )
 
         Start game ->
             ( { model | state = Started game }
