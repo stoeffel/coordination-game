@@ -235,26 +235,26 @@ update msg model =
 
                             else
                                 30
+
+                        ( maybeDone, doneCmd ) =
+                            if newRemaining <= 0 then
+                                ( Done
+                                , Cmd.batch
+                                    [ Process.sleep (5 * 1000)
+                                        |> Task.perform (\_ -> StartOver)
+                                    , speak "Done"
+                                    ]
+                                )
+
+                            else
+                                ( model.state, Cmd.none )
                     in
                     ( { model
                         | remaining = newRemaining
                         , bpm = newBpm
-                        , state =
-                            if newRemaining <= 0 then
-                                Done
-
-                            else
-                                model.state
+                        , state = maybeDone
                       }
-                    , if newRemaining <= 0 then
-                        Cmd.batch
-                            [ Process.sleep (5 * 1000)
-                                |> Task.perform (\_ -> StartOver)
-                            , speak "Done"
-                            ]
-
-                      else
-                        Cmd.none
+                    , doneCmd
                     )
 
                 _ ->
@@ -264,7 +264,12 @@ update msg model =
             ( model, Random.generate NextCommand ipsiContra )
 
         NextCommand command ->
-            ( model, speak (commandToString command) )
+            case model.state of
+                Started game ->
+                    ( model, speak (commandToString command) )
+
+                _ ->
+                    ( model, Cmd.none )
 
         Pause game ->
             ( { model | state = Paused game }, Cmd.none )
