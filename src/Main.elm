@@ -205,71 +205,68 @@ update msg model =
             )
 
         TickSeconds ->
-            case model.state of
-                Started game ->
-                    let
-                        newRemaining =
-                            model.remaining - 1
+            let
+                newRemaining =
+                    model.remaining - 1
 
-                        steps =
-                            model.timer / 7
+                steps =
+                    model.timer / 7
 
-                        newBpm =
-                            if newRemaining < model.timer - 6 * steps then
-                                60
+                newBpm =
+                    if newRemaining < model.timer - 6 * steps then
+                        60
 
-                            else if newRemaining < model.timer - 5 * steps then
-                                55
+                    else if newRemaining < model.timer - 5 * steps then
+                        55
 
-                            else if newRemaining < model.timer - 4 * steps then
-                                50
+                    else if newRemaining < model.timer - 4 * steps then
+                        50
 
-                            else if newRemaining < model.timer - 3 * steps then
-                                45
+                    else if newRemaining < model.timer - 3 * steps then
+                        45
 
-                            else if newRemaining < model.timer - 2 * steps then
-                                40
+                    else if newRemaining < model.timer - 2 * steps then
+                        40
 
-                            else if newRemaining < model.timer - steps then
-                                35
+                    else if newRemaining < model.timer - steps then
+                        35
 
-                            else
-                                30
+                    else
+                        30
 
-                        ( maybeDone, doneCmd ) =
-                            if newRemaining <= 0 then
-                                ( Done
-                                , Cmd.batch
-                                    [ Process.sleep (5 * 1000)
-                                        |> Task.perform (\_ -> StartOver)
-                                    , speak "Done"
-                                    ]
-                                )
+                ( maybeDone, doneCmd ) =
+                    if newRemaining <= 0 then
+                        ( Done
+                        , Cmd.batch
+                            [ Process.sleep (5 * 1000)
+                                |> Task.perform (\_ -> StartOver)
+                            , speak "Done"
+                            ]
+                        )
 
-                            else
-                                ( model.state, Cmd.none )
-                    in
-                    ( { model
-                        | remaining = newRemaining
-                        , bpm = newBpm
-                        , state = maybeDone
-                      }
-                    , doneCmd
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
+                    else
+                        ( model.state, Cmd.none )
+            in
+            ( { model
+                | remaining = newRemaining
+                , bpm = newBpm
+                , state = maybeDone
+              }
+            , doneCmd
+            )
 
         Bpm ->
             ( model, Random.generate NextCommand ipsiContra )
 
         NextCommand command ->
-            case model.state of
+            ( model
+            , case model.state of
                 Started game ->
-                    ( model, speak (commandToString command) )
+                    speak (commandToString command)
 
                 _ ->
-                    ( model, Cmd.none )
+                    Cmd.none
+            )
 
         Pause game ->
             ( { model | state = Paused game }, Cmd.none )
@@ -280,15 +277,15 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions { state, timer, bpm } =
-    Sub.batch
-        [ case state of
-            Started _ ->
-                Time.every (60 * 1000 / bpm) (\_ -> Bpm)
+    case state of
+        Started _ ->
+            Sub.batch
+                [ Time.every (60 * 1000 / bpm) (\_ -> Bpm)
+                , Time.every 1000 (\_ -> TickSeconds)
+                ]
 
-            _ ->
-                Sub.none
-        , Time.every 1000 (\_ -> TickSeconds)
-        ]
+        _ ->
+            Sub.none
 
 
 onUrlRequest : Browser.UrlRequest -> Msg
