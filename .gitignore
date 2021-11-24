@@ -1,0 +1,10 @@
+/node_modules/
+/output/
+bower_components
+node_modules
+
+# Generated files
+.psci
+output
+.cache
+dist
