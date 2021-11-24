@@ -79,7 +79,7 @@ type alias Flags =
 
 init : D.Value -> Url -> Navigation.Key -> ( Model, Cmd Msg )
 init _ _ _ =
-    ( { state = NotStarted, bpm = 40, timer = 120, remaining = 120 }, Cmd.none )
+    ( { state = NotStarted, bpm = 30, timer = 120, remaining = 120 }, Cmd.none )
 
 
 view : Model -> Browser.Document Msg
@@ -212,23 +212,29 @@ update msg model =
                             model.remaining - 1
 
                         steps =
-                            model.timer / 5
+                            model.timer / 7
 
                         newBpm =
-                            if newRemaining < model.timer - 4 * steps then
+                            if newRemaining < model.timer - 6 * steps then
                                 60
 
-                            else if newRemaining < model.timer - 3 * steps then
+                            else if newRemaining < model.timer - 5 * steps then
                                 55
 
-                            else if newRemaining < model.timer - 2 * steps then
+                            else if newRemaining < model.timer - 4 * steps then
                                 50
 
-                            else if newRemaining < model.timer - steps then
+                            else if newRemaining < model.timer - 3 * steps then
                                 45
 
-                            else
+                            else if newRemaining < model.timer - 2 * steps then
                                 40
+
+                            else if newRemaining < model.timer - steps then
+                                35
+
+                            else
+                                30
                     in
                     ( { model
                         | remaining = newRemaining
@@ -258,12 +264,7 @@ update msg model =
             ( model, Random.generate NextCommand ipsiContra )
 
         NextCommand command ->
-            case model.state of
-                Started _ ->
-                    ( model, speak (commandToString command) )
-
-                _ ->
-                    ( model, Cmd.none )
+            ( model, speak (commandToString command) )
 
         Pause game ->
             ( { model | state = Paused game }, Cmd.none )
@@ -273,9 +274,14 @@ update msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions { timer, bpm } =
+subscriptions { state, timer, bpm } =
     Sub.batch
-        [ Time.every (60 * 1000 / bpm) (\_ -> Bpm)
+        [ case state of
+            Started _ ->
+                Time.every (60 * 1000 / bpm) (\_ -> Bpm)
+
+            _ ->
+                Sub.none
         , Time.every 1000 (\_ -> TickSeconds)
         ]
 
