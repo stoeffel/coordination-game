@@ -23,6 +23,7 @@ type alias Model =
     { state : State
     , bpm : Float
     , timer : Float
+    , remaining : Float
     }
 
 
@@ -77,7 +78,7 @@ type alias Flags =
 
 init : D.Value -> Url -> Navigation.Key -> ( Model, Cmd Msg )
 init _ _ _ =
-    ( { state = NotStarted, bpm = 40, timer = 120 }, Cmd.none )
+    ( { state = NotStarted, bpm = 40, timer = 120, remaining = 120 }, Cmd.none )
 
 
 view : Model -> Browser.Document Msg
@@ -134,7 +135,8 @@ view model =
                         ]
 
                     Started game ->
-                        [ E.text (String.fromFloat model.timer ++ "s")
+                        [ E.text (String.fromFloat model.remaining ++ "s")
+                        , E.text (String.fromFloat model.bpm ++ " bpm")
                         , Input.button
                             [ E.centerX
                             , E.centerY
@@ -150,7 +152,7 @@ view model =
                         ]
 
                     Paused game ->
-                        [ E.text (String.fromFloat model.timer ++ "s")
+                        [ E.text (String.fromFloat model.remaining ++ "s")
                         , Input.button
                             [ E.centerX
                             , E.centerY
@@ -187,7 +189,7 @@ update msg model =
             ( model, Cmd.none )
 
         AdjustTime minutes ->
-            ( { model | timer = minutes * 60 }, Cmd.none )
+            ( { model | timer = minutes * 60, remaining = minutes * 60 }, Cmd.none )
 
         Start game ->
             ( { model | state = Started game }
@@ -197,7 +199,30 @@ update msg model =
         TickSeconds ->
             case model.state of
                 Started game ->
-                    ( { model | timer = model.timer - 1 }
+                    let
+                        newRemaining =
+                            model.remaining - 1
+
+                        steps =
+                            model.timer / 5
+
+                        newBpm =
+                            if newRemaining < model.timer - 4 * steps then
+                                60
+
+                            else if newRemaining < model.timer - 3 * steps then
+                                55
+
+                            else if newRemaining < model.timer - 2 * steps then
+                                50
+
+                            else if newRemaining < model.timer - steps then
+                                45
+
+                            else
+                                40
+                    in
+                    ( { model | remaining = newRemaining, bpm = newBpm }
                     , Cmd.none
                     )
 
