@@ -89,7 +89,7 @@ view model =
         [ E.layout
             [ Font.color foregroundColor
             , Background.color backgroundColor
-            , Font.size 30
+            , Font.size 50
             , Font.family
                 [ Font.typeface "Patrick Hand"
                 , Font.sansSerif
@@ -100,7 +100,7 @@ view model =
             (E.column
                 [ E.centerX
                 , E.centerY
-                , E.spaceEvenly
+                , E.spacing 20
                 ]
              <|
                 case model.state of
@@ -109,18 +109,20 @@ view model =
 
                     NotStarted ->
                         [ Input.button
-                            [ E.centerX
-                            , E.centerY
-                            , E.padding 10
-                            , Background.color foregroundColor
-                            , Font.color backgroundColor
-                            , Border.color foregroundColor
-                            , Border.width 1
-                            , Border.shadow { blur = 5, color = foregroundColor, offset = ( 0, 0 ), size = 1 }
-                            , Border.rounded 8
-                            ]
+                            buttonStyles
                             { onPress = Just (Start LegsAlternating), label = E.text "Ipsi / Contra - Legs Alternating" }
-                        , Input.slider []
+                        , Input.slider
+                            [ E.behindContent
+                                (E.el
+                                    [ E.width E.fill
+                                    , E.height (E.px 2)
+                                    , E.centerY
+                                    , Background.color foregroundColor
+                                    , Border.rounded 2
+                                    ]
+                                    E.none
+                                )
+                            ]
                             { onChange = AdjustTime
                             , label =
                                 Input.labelAbove []
@@ -142,37 +144,30 @@ view model =
                         [ E.text (String.fromFloat model.remaining ++ "s")
                         , E.text (String.fromFloat model.bpm ++ " bpm")
                         , Input.button
-                            [ E.centerX
-                            , E.centerY
-                            , E.padding 10
-                            , Background.color foregroundColor
-                            , Font.color backgroundColor
-                            , Border.color foregroundColor
-                            , Border.width 1
-                            , Border.shadow { blur = 5, color = foregroundColor, offset = ( 0, 0 ), size = 1 }
-                            , Border.rounded 8
-                            ]
+                            buttonStyles
                             { onPress = Just (Pause game), label = E.text "Pause" }
                         ]
 
                     Paused game ->
                         [ E.text (String.fromFloat model.remaining ++ "s")
                         , Input.button
-                            [ E.centerX
-                            , E.centerY
-                            , E.padding 10
-                            , Background.color foregroundColor
-                            , Font.color backgroundColor
-                            , Border.color foregroundColor
-                            , Border.width 1
-                            , Border.shadow { blur = 5, color = foregroundColor, offset = ( 0, 0 ), size = 1 }
-                            , Border.rounded 8
-                            ]
+                            buttonStyles
                             { onPress = Just (Continue game), label = E.text "Continue" }
                         ]
             )
         ]
     }
+
+
+buttonStyles =
+    [ E.padding 10
+    , Background.color foregroundColor
+    , Font.color backgroundColor
+    , Border.color foregroundColor
+    , Border.width 1
+    , Border.shadow { blur = 2, color = foregroundColor, offset = ( 0, 0 ), size = 1 }
+    , Border.rounded 2
+    ]
 
 
 type Msg
