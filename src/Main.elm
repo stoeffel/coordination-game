@@ -123,9 +123,9 @@ view model =
                             , label =
                                 Input.labelAbove []
                                     (viewRemaining model.remaining)
-                            , min = 60
-                            , max = 300
-                            , step = Just 30
+                            , min = 60 * 1000
+                            , max = 300 * 1000
+                            , step = Just (30 * 1000)
                             , value = model.remaining
                             , thumb = Input.defaultThumb
                             }
