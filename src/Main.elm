@@ -159,7 +159,7 @@ view model =
                         [ viewRemaining model.remaining
                         , Input.button
                             buttonStyles
-                            { onPress = Just (Continue game), label = E.text "Continue" }
+                            { onPress = Just (Start game), label = E.text "Continue" }
                         ]
             )
         ]
@@ -199,7 +199,6 @@ buttonStyles =
 type Msg
     = NoOp
     | Start Game
-    | Continue Game
     | Pause Game
     | Bpm
     | TickSeconds
@@ -253,6 +252,9 @@ update msg model =
                     , getReady (x - 1)
                     )
 
+                Paused _ ->
+                    ( { model | state = GetReady 3 }, getReady 3 )
+
                 _ ->
                     ( model, Cmd.none )
 
@@ -288,9 +290,6 @@ update msg model =
 
         Pause game ->
             ( { model | state = Paused game }, Cmd.none )
-
-        Continue game ->
-            ( { model | state = Started game }, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
