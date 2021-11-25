@@ -116,7 +116,7 @@ view model =
                     NotStarted ->
                         [ Input.button
                             buttonStyles
-                            { onPress = Just (Start LegsAlternating), label = E.text "Ipsi / Contra - Legs Alternating" }
+                            { onPress = Just (Start LegsAlternating), label = E.text "Ipsi / Contra" }
                         , Input.slider
                             sliderStyles
                             { onChange = AdjustTime
