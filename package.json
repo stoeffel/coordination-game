@@ -27,6 +27,15 @@
     "shortName": "circles game",
     "startURL": ".",
     "theme": "rgba(82, 75, 75, 0.1)",
-    "display": "standalone"
+    "display": "standalone",
+    "generateIconOptions": {
+      "baseIcon": "./monkey.png",
+      "sizes": [
+        192,
+        384,
+        512
+      ],
+      "genFavicons": true
+    }
   }
 }
