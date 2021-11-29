@@ -61,7 +61,7 @@ commandToString command =
 main : Program D.Value Model Msg
 main =
     Browser.application
-        { init = init
+        { init = \_ _ _ -> ( init, Cmd.none )
         , view = view
         , update = update
         , subscriptions = subscriptions
@@ -77,9 +77,9 @@ type alias Flags =
     {}
 
 
-init : D.Value -> Url -> Navigation.Key -> ( Model, Cmd Msg )
-init _ _ _ =
-    ( { state = NotStarted, bpm = 30, remaining = 120 * 1000 }, Cmd.none )
+init : Model
+init =
+    { state = NotStarted, bpm = 30, remaining = 120 * 1000 }
 
 
 view : Model -> Browser.Document Msg
@@ -215,7 +215,7 @@ update msg model =
             ( model, Cmd.none )
 
         StartOver ->
-            ( { model | state = NotStarted }, Cmd.none )
+            ( { init | bpm = model.bpm }, Cmd.none )
 
         AdjustTime minutes ->
             ( { model | remaining = minutes }, Cmd.none )
