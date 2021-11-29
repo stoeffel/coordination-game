@@ -23,8 +23,8 @@
   },
   "sw-precache": {},
   "pwaManifest": {
-    "name": "circles game",
-    "shortName": "circles game",
+    "name": "coordination game",
+    "shortName": "coordination game",
     "startURL": ".",
     "theme": "rgba(82, 75, 75, 0.1)",
     "display": "standalone",
