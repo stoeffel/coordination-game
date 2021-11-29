@@ -89,7 +89,6 @@ view model =
         [ E.layout
             [ Font.color foregroundColor
             , Background.color backgroundColor
-            , Font.size 50
             , Font.family
                 [ Font.typeface "Patrick Hand"
                 , Font.sansSerif
@@ -102,27 +101,24 @@ view model =
                 , E.centerY
                 , E.spacing 20
                 ]
-             <|
-                case model.state of
+                (case model.state of
                     Done ->
-                        [ E.text "Done" ]
+                        [ h2 "Done" ]
 
                     GetReady 0 ->
-                        [ E.text "GO!" ]
+                        [ h2 "GO!" ]
 
                     GetReady x ->
-                        [ E.text (String.fromInt x) ]
+                        [ h2 (String.fromInt x) ]
 
                     NotStarted ->
-                        [ Input.button
-                            buttonStyles
-                            { onPress = Just (Start LegsAlternating), label = E.text "Ipsi / Contra" }
+                        [ h2 "Ipsi / Contra"
                         , Input.slider
                             sliderStyles
                             { onChange = AdjustTime
                             , label =
                                 Input.labelAbove []
-                                    (viewRemaining model.remaining)
+                                    (viewRemaining Normal model.remaining)
                             , min = 60 * 1000
                             , max = 300 * 1000
                             , step = Just (30 * 1000)
@@ -134,41 +130,73 @@ view model =
                             { onChange = AdjustBpm
                             , label =
                                 Input.labelAbove []
-                                    (E.text
-                                        ("Bpm: "
-                                            ++ String.fromFloat model.bpm
-                                        )
-                                    )
+                                    (viewBpm model.bpm)
                             , min = 30
                             , max = 60
                             , step = Just 5
                             , value = model.bpm
                             , thumb = Input.defaultThumb
                             }
+                        , Input.button
+                            buttonStyles
+                            { onPress = Just (Start LegsAlternating), label = E.text "Start" }
                         ]
 
                     Started game ->
-                        [ viewRemaining model.remaining
-                        , E.text (String.fromFloat model.bpm ++ " bpm")
+                        [ viewRemaining Big model.remaining
+                        , viewBpm model.bpm
                         , Input.button
                             buttonStyles
                             { onPress = Just (Pause game), label = E.text "Pause" }
                         ]
 
                     Paused game ->
-                        [ viewRemaining model.remaining
-                        , Input.button
-                            buttonStyles
-                            { onPress = Just (Start game), label = E.text "Continue" }
+                        [ viewRemaining Big model.remaining
+                        , viewBpm model.bpm
+                        , E.row [ E.spacing 20 ]
+                            [ Input.button
+                                buttonStyles
+                                { onPress = Just (Start game), label = E.text "Continue" }
+                            , Input.button
+                                buttonStyles
+                                { onPress = Just StartOver, label = E.text "Quit" }
+                            ]
                         ]
+                )
             )
         ]
     }
 
 
-viewRemaining : Float -> E.Element Msg
-viewRemaining remaining =
-    E.text (String.fromFloat (remaining / 1000) ++ "s")
+h2 : String -> E.Element msg
+h2 text =
+    E.html (Html.h2 [] [ Html.text text ])
+
+
+type Size
+    = Normal
+    | Big
+
+
+viewRemaining : Size -> Float -> E.Element msg
+viewRemaining size remaining =
+    let
+        text =
+            String.fromFloat (remaining / 1000) ++ "s"
+    in
+    E.el [ E.centerX ] <|
+        case size of
+            Normal ->
+                E.text text
+
+            Big ->
+                h2 text
+
+
+viewBpm : Float -> E.Element msg
+viewBpm bpm =
+    E.el [ E.centerX ]
+        (E.text (String.fromFloat bpm ++ " bpm"))
 
 
 sliderStyles =
@@ -187,6 +215,7 @@ sliderStyles =
 
 buttonStyles =
     [ E.padding 10
+    , E.centerX
     , Background.color foregroundColor
     , Font.color backgroundColor
     , Border.color foregroundColor
