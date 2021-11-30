@@ -153,7 +153,7 @@ view model =
                     Paused game ->
                         [ viewRemaining Big model.remaining
                         , viewBpm model.bpm
-                        , E.row [ E.spacing 20 ]
+                        , E.row [ E.spacing 20, E.centerX ]
                             [ Input.button
                                 buttonStyles
                                 { onPress = Just (Start game), label = E.text "Continue" }
