@@ -170,7 +170,7 @@ view model =
 
 h2 : String -> E.Element msg
 h2 text =
-    E.html (Html.h2 [] [ Html.text text ])
+    E.html (Html.h2 [ Attr.style "font-size" "2em" ] [ Html.text text ])
 
 
 type Size
@@ -180,23 +180,32 @@ type Size
 
 viewRemaining : Size -> Float -> E.Element msg
 viewRemaining size remaining =
-    let
-        text =
-            String.fromFloat (remaining / 1000) ++ "s"
-    in
-    E.el [ E.centerX ] <|
-        case size of
-            Normal ->
-                E.text text
-
-            Big ->
-                h2 text
+    (String.fromFloat (remaining / 1000) ++ "s")
+        |> E.text
+        |> E.el [ E.centerX, sizeToStyle size ]
 
 
 viewBpm : Float -> E.Element msg
 viewBpm bpm =
-    E.el [ E.centerX ]
-        (E.text (String.fromFloat bpm ++ " bpm"))
+    (String.fromFloat bpm ++ " bpm")
+        |> E.text
+        |> E.el [ E.centerX, sizeToStyle Normal ]
+
+
+sizeToStyle : Size -> E.Attribute msg
+sizeToStyle size =
+    case size of
+        Normal ->
+            Font.size (scaled 4)
+
+        Big ->
+            Font.size (scaled 10)
+
+
+scaled : Int -> Int
+scaled x =
+    E.modular 16 1.25 x
+        |> ceiling
 
 
 sliderStyles =
