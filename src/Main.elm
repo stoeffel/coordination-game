@@ -21,21 +21,24 @@ import Url exposing (Url)
 
 type alias Model =
     { state : State
+    , game : Game
     , bpm : Float
     , remaining : Float
+    , rest : Float
     }
 
 
 type State
     = NotStarted
     | GetReady Int
-    | Started Game
-    | Paused Game
+    | Started
+    | Paused
     | Done
 
 
 type Game
     = LegsAlternating
+    | Rest
 
 
 type Commands
@@ -79,7 +82,12 @@ type alias Flags =
 
 init : Model
 init =
-    { state = NotStarted, bpm = 30, remaining = 120 * 1000 }
+    { state = NotStarted
+    , game = Rest
+    , bpm = 30
+    , remaining = 120 * 1000
+    , rest = 60 * 1000
+    }
 
 
 view : Model -> Browser.Document Msg
@@ -118,7 +126,7 @@ view model =
                             { onChange = AdjustTime
                             , label =
                                 Input.labelAbove []
-                                    (viewRemaining Normal model.remaining)
+                                    (viewTime Normal model.remaining)
                             , min = 60 * 1000
                             , max = 300 * 1000
                             , step = Just (30 * 1000)
@@ -140,23 +148,63 @@ view model =
                         , Input.button
                             buttonStyles
                             { onPress = Just (Start LegsAlternating), label = E.text "Start" }
-                        ]
-
-                    Started game ->
-                        [ viewRemaining Big model.remaining
-                        , viewBpm model.bpm
+                        , h2 "Rest"
+                        , Input.slider
+                            sliderStyles
+                            { onChange = AdjustRest
+                            , label =
+                                Input.labelAbove []
+                                    (viewTime Normal model.rest)
+                            , min = 30 * 1000
+                            , max = 300 * 1000
+                            , step = Just (30 * 1000)
+                            , value = model.rest
+                            , thumb = Input.defaultThumb
+                            }
                         , Input.button
                             buttonStyles
-                            { onPress = Just (Pause game), label = E.text "Pause" }
+                            { onPress = Just (Start Rest), label = E.text "Start" }
                         ]
 
-                    Paused game ->
-                        [ viewRemaining Big model.remaining
-                        , viewBpm model.bpm
+                    Started ->
+                        [ viewTime Big
+                            (case model.game of
+                                Rest ->
+                                    model.rest
+
+                                LegsAlternating ->
+                                    model.remaining
+                            )
+                        , case model.game of
+                            Rest ->
+                                E.none
+
+                            LegsAlternating ->
+                                viewBpm model.bpm
+                        , Input.button
+                            buttonStyles
+                            { onPress = Just Pause, label = E.text "Pause" }
+                        ]
+
+                    Paused ->
+                        [ viewTime Big
+                            (case model.game of
+                                Rest ->
+                                    model.rest
+
+                                LegsAlternating ->
+                                    model.remaining
+                            )
+                        , case model.game of
+                            Rest ->
+                                E.none
+
+                            LegsAlternating ->
+                                viewBpm model.bpm
                         , E.row [ E.spacing 20, E.centerX ]
                             [ Input.button
                                 buttonStyles
-                                { onPress = Just (Start game), label = E.text "Continue" }
+                                { onPress = Just (Start model.game), label = E.text "Continue" }
                             , Input.button
                                 buttonStyles
                                 { onPress = Just StartOver, label = E.text "Quit" }
@@ -178,8 +226,8 @@ type Size
     | Big
 
 
-viewRemaining : Size -> Float -> E.Element msg
-viewRemaining size remaining =
+viewTime : Size -> Float -> E.Element msg
+viewTime size remaining =
     (String.fromFloat (remaining / 1000) ++ "s")
         |> E.text
         |> E.el [ E.centerX, sizeToStyle size ]
@@ -237,11 +285,12 @@ buttonStyles =
 type Msg
     = NoOp
     | Start Game
-    | Pause Game
+    | Pause
     | Bpm
     | TickSeconds
     | NextCommand Commands
     | AdjustTime Float
+    | AdjustRest Float
     | AdjustBpm Float
     | StartOver
 
@@ -258,15 +307,21 @@ update msg model =
         AdjustTime minutes ->
             ( { model | remaining = minutes }, Cmd.none )
 
+        AdjustRest minutes ->
+            ( { model | rest = minutes }, Cmd.none )
+
         AdjustBpm bpm ->
             ( { model | bpm = bpm }, Cmd.none )
 
-        Start game ->
+        Start Rest ->
+            ( { model | state = Started, game = Rest }, Cmd.none )
+
+        Start LegsAlternating ->
             let
                 getReady x =
                     Cmd.batch
                         [ Process.sleep (60 * 1000 / model.bpm)
-                            |> Task.perform (\_ -> Start game)
+                            |> Task.perform (\_ -> Start LegsAlternating)
                         , speak
                             (if x == 0 then
                                 "go"
@@ -281,7 +336,7 @@ update msg model =
                     ( { model | state = GetReady 3 }, getReady 3 )
 
                 GetReady 0 ->
-                    ( { model | state = Started game }
+                    ( { model | state = Started, game = LegsAlternating }
                     , Random.generate NextCommand ipsiContra
                     )
 
@@ -290,26 +345,34 @@ update msg model =
                     , getReady (x - 1)
                     )
 
-                Paused _ ->
+                Paused ->
                     ( { model | state = GetReady 3 }, getReady 3 )
 
                 _ ->
                     ( model, Cmd.none )
 
         TickSeconds ->
-            if model.remaining - 1000 <= 0 then
-                ( { model | remaining = 0, state = Done }
+            let
+                ( time, setTime ) =
+                    case model.game of
+                        Rest ->
+                            ( model.rest, \rest -> { model | rest = rest } )
+
+                        LegsAlternating ->
+                            ( model.remaining, \remaining -> { model | remaining = remaining } )
+            in
+            if time - 1000 <= 0 then
+                ( setTime 0
+                    |> (\m -> { m | state = Done })
                 , Cmd.batch
-                    [ Process.sleep (5 * 1000)
+                    [ Process.sleep 1000
                         |> Task.perform (\_ -> StartOver)
                     , speak "Done"
                     ]
                 )
 
             else
-                ( { model | remaining = model.remaining - 1000 }
-                , Cmd.none
-                )
+                ( setTime (time - 1000), Cmd.none )
 
         Bpm ->
             ( model
@@ -318,22 +381,22 @@ update msg model =
 
         NextCommand command ->
             ( model
-            , case model.state of
-                Started game ->
-                    speak (commandToString command)
-
-                _ ->
+            , case model.game of
+                Rest ->
                     Cmd.none
+
+                LegsAlternating ->
+                    speak (commandToString command)
             )
 
-        Pause game ->
-            ( { model | state = Paused game }, Cmd.none )
+        Pause ->
+            ( { model | state = Paused }, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions { state, bpm } =
     case state of
-        Started _ ->
+        Started ->
             Sub.batch
                 [ Time.every (60 * 1000 / bpm) (\_ -> Bpm)
                 , Time.every 1000 (\_ -> TickSeconds)
