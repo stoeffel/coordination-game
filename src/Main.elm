@@ -85,9 +85,19 @@ init =
     { state = NotStarted
     , game = Rest
     , bpm = 30
-    , remaining = 120 * 1000
-    , rest = 60 * 1000
+    , remaining = minutes 2
+    , rest = minutes 1
     }
+
+
+seconds : Float -> Float
+seconds x =
+    x * 1000
+
+
+minutes : Float -> Float
+minutes x =
+    seconds (60 * x)
 
 
 view : Model -> Browser.Document Msg
@@ -127,9 +137,9 @@ view model =
                             , label =
                                 Input.labelAbove []
                                     (viewTime Normal model.remaining)
-                            , min = 60 * 1000
-                            , max = 300 * 1000
-                            , step = Just (30 * 1000)
+                            , min = minutes 1
+                            , max = minutes 5
+                            , step = Just (seconds 30)
                             , value = model.remaining
                             , thumb = Input.defaultThumb
                             }
@@ -155,9 +165,9 @@ view model =
                             , label =
                                 Input.labelAbove []
                                     (viewTime Normal model.rest)
-                            , min = 30 * 1000
-                            , max = 300 * 1000
-                            , step = Just (30 * 1000)
+                            , min = minutes 1
+                            , max = minutes 5
+                            , step = Just (seconds 30)
                             , value = model.rest
                             , thumb = Input.defaultThumb
                             }
@@ -228,7 +238,7 @@ type Size
 
 viewTime : Size -> Float -> E.Element msg
 viewTime size remaining =
-    (String.fromFloat (remaining / 1000) ++ "s")
+    (String.fromFloat (remaining / seconds 1) ++ "s")
         |> E.text
         |> E.el [ E.centerX, sizeToStyle size ]
 
@@ -304,11 +314,11 @@ update msg model =
         StartOver ->
             ( { init | bpm = model.bpm }, Cmd.none )
 
-        AdjustTime minutes ->
-            ( { model | remaining = minutes }, Cmd.none )
+        AdjustTime remaining ->
+            ( { model | remaining = remaining }, Cmd.none )
 
-        AdjustRest minutes ->
-            ( { model | rest = minutes }, Cmd.none )
+        AdjustRest rest ->
+            ( { model | rest = rest }, Cmd.none )
 
         AdjustBpm bpm ->
             ( { model | bpm = bpm }, Cmd.none )
@@ -320,7 +330,7 @@ update msg model =
             let
                 getReady x =
                     Cmd.batch
-                        [ Process.sleep (60 * 1000 / model.bpm)
+                        [ Process.sleep (minutes 1 / model.bpm)
                             |> Task.perform (\_ -> Start LegsAlternating)
                         , speak
                             (if x == 0 then
@@ -361,18 +371,18 @@ update msg model =
                         LegsAlternating ->
                             ( model.remaining, \remaining -> { model | remaining = remaining } )
             in
-            if time - 1000 <= 0 then
+            if time - seconds 1 <= 0 then
                 ( setTime 0
                     |> (\m -> { m | state = Done })
                 , Cmd.batch
-                    [ Process.sleep 1000
+                    [ Process.sleep (seconds 1)
                         |> Task.perform (\_ -> StartOver)
                     , speak "Done"
                     ]
                 )
 
             else
-                ( setTime (time - 1000), Cmd.none )
+                ( setTime (time - seconds 1), Cmd.none )
 
         Bpm ->
             ( model
@@ -398,8 +408,8 @@ subscriptions { state, bpm } =
     case state of
         Started ->
             Sub.batch
-                [ Time.every (60 * 1000 / bpm) (\_ -> Bpm)
-                , Time.every 1000 (\_ -> TickSeconds)
+                [ Time.every (minutes 1 / bpm) (\_ -> Bpm)
+                , Time.every (seconds 1) (\_ -> TickSeconds)
                 ]
 
         _ ->
