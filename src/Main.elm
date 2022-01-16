@@ -17,6 +17,8 @@ import Random
 import Task
 import Time
 import Url exposing (Url)
+import Widget
+import Widget.Style.Material as Material
 
 
 type alias Model =
@@ -28,6 +30,32 @@ type alias Model =
     }
 
 
+gameFromInt : Int -> Maybe Game
+gameFromInt x =
+    case x of
+        0 ->
+            Just Isolated
+
+        1 ->
+            Just AllDirections
+
+        _ ->
+            Nothing
+
+
+gameToInt : Game -> Maybe Int
+gameToInt x =
+    case x of
+        Isolated ->
+            Just 0
+
+        AllDirections ->
+            Just 1
+
+        _ ->
+            Nothing
+
+
 type State
     = NotStarted
     | GetReady Int
@@ -37,18 +65,44 @@ type State
 
 
 type Game
-    = LegsAlternating
+    = Isolated
+    | AllDirections
     | Rest
 
 
 type Commands
     = Ipsi
     | Contra
+    | Outside
+    | Inside
+    | Forward
+    | Backward
+    | Combined Commands Commands
 
 
 ipsiContra : Random.Generator Commands
 ipsiContra =
     Random.uniform Ipsi [ Contra ]
+
+
+allDirections : Random.Generator Commands
+allDirections =
+    Random.uniform Outside [ Inside, Forward, Backward ]
+        |> Random.andThen
+            (\first ->
+                Random.uniform Ipsi [ Contra ]
+                    |> Random.andThen
+                        (\second ->
+                            Random.weighted ( 0.4, Combined first second )
+                                [ ( 0.1, Ipsi )
+                                , ( 0.1, Contra )
+                                , ( 0.1, Outside )
+                                , ( 0.1, Inside )
+                                , ( 0.1, Forward )
+                                , ( 0.1, Backward )
+                                ]
+                        )
+            )
 
 
 commandToString : Commands -> String
@@ -59,6 +113,21 @@ commandToString command =
 
         Contra ->
             "contra"
+
+        Outside ->
+            "outside"
+
+        Inside ->
+            "inside"
+
+        Forward ->
+            "forward"
+
+        Backward ->
+            "backward"
+
+        Combined first second ->
+            commandToString first ++ " " ++ commandToString second
 
 
 main : Program D.Value Model Msg
@@ -83,8 +152,8 @@ type alias Flags =
 init : Model
 init =
     { state = NotStarted
-    , game = Rest
-    , bpm = 40
+    , game = Isolated
+    , bpm = 60
     , remaining = minutes 2
     , rest = minutes 1
     }
@@ -113,104 +182,96 @@ view model =
                 ]
             , E.height E.fill
             , E.width E.fill
+            , E.paddingXY 0 50
             ]
-            (E.column
-                [ E.centerX
-                , E.centerY
-                , E.spacing 20
-                ]
-                (case model.state of
-                    Done ->
-                        [ h2 "Done" ]
+            (case model.state of
+                Done ->
+                    E.column [ E.centerX, E.centerY ] [ h2 "Done" ]
 
-                    GetReady 0 ->
-                        [ h2 "GO!" ]
+                GetReady 0 ->
+                    E.column [ E.centerX, E.centerY ] [ h2 "GO!" ]
 
-                    GetReady x ->
-                        [ h2 (String.fromInt x) ]
+                GetReady x ->
+                    E.column [ E.centerX, E.centerY ] [ h2 (String.fromInt x) ]
 
-                    NotStarted ->
-                        [ h2 "Ipsi / Contra"
-                        , Input.slider
-                            sliderStyles
-                            { onChange = AdjustTime
-                            , label =
-                                Input.labelAbove []
-                                    (viewTime Normal model.remaining)
-                            , min = minutes 1
-                            , max = minutes 5
-                            , step = Just (seconds 30)
-                            , value = model.remaining
-                            , thumb = Input.defaultThumb
+                NotStarted ->
+                    Widget.tab (Material.tab Material.defaultPalette)
+                        { tabs =
+                            { selected = gameToInt model.game
+                            , options =
+                                [ { text = "Isolated"
+                                  , icon = E.none
+                                  }
+                                , { text = "All Directions"
+                                  , icon = E.none
+                                  }
+                                ]
+                            , onSelect = gameFromInt >> Maybe.map ChangedTab
                             }
-                        , Input.slider
-                            sliderStyles
-                            { onChange = AdjustBpm
-                            , label =
-                                Input.labelAbove []
-                                    (viewBpm model.bpm)
-                            , min = 30
-                            , max = 90
-                            , step = Just 5
-                            , value = model.bpm
-                            , thumb = Input.defaultThumb
-                            }
-                        , Input.button
-                            buttonStyles
-                            { onPress = Just (Start LegsAlternating), label = E.text "Start" }
-                        , h2 "Rest"
-                        , Input.slider
-                            sliderStyles
-                            { onChange = AdjustRest
-                            , label =
-                                Input.labelAbove []
-                                    (viewTime Normal model.rest)
-                            , min = minutes 1
-                            , max = minutes 5
-                            , step = Just (seconds 30)
-                            , value = model.rest
-                            , thumb = Input.defaultThumb
-                            }
-                        , Input.button
-                            buttonStyles
-                            { onPress = Just (Start Rest), label = E.text "Start" }
+                        , content =
+                            \type_ ->
+                                case Maybe.andThen gameFromInt type_ of
+                                    Just Isolated ->
+                                        viewIsolated model
+
+                                    Just AllDirections ->
+                                        viewAllDirections model
+
+                                    _ ->
+                                        E.none
+                        }
+
+                Started ->
+                    E.column
+                        [ E.centerX
+                        , E.centerY
+                        , E.spacing 20
                         ]
-
-                    Started ->
                         [ viewTime Big
                             (case model.game of
                                 Rest ->
                                     model.rest
 
-                                LegsAlternating ->
+                                _ ->
                                     model.remaining
                             )
                         , case model.game of
                             Rest ->
                                 E.none
 
-                            LegsAlternating ->
+                            Isolated ->
                                 viewBpm model.bpm
+
+                            AllDirections ->
+                                E.none
                         , Input.button
                             buttonStyles
                             { onPress = Just Pause, label = E.text "Pause" }
                         ]
 
-                    Paused ->
+                Paused ->
+                    E.column
+                        [ E.centerX
+                        , E.centerY
+                        , E.spacing 20
+                        ]
                         [ viewTime Big
                             (case model.game of
                                 Rest ->
                                     model.rest
 
-                                LegsAlternating ->
+                                _ ->
                                     model.remaining
                             )
                         , case model.game of
                             Rest ->
                                 E.none
 
-                            LegsAlternating ->
+                            Isolated ->
                                 viewBpm model.bpm
+
+                            AllDirections ->
+                                E.none
                         , E.row [ E.spacing 20, E.centerX ]
                             [ Input.button
                                 buttonStyles
@@ -220,10 +281,91 @@ view model =
                                 { onPress = Just StartOver, label = E.text "Quit" }
                             ]
                         ]
-                )
             )
         ]
     }
+
+
+viewAllDirections : Model -> E.Element Msg
+viewAllDirections model =
+    E.column
+        [ E.width E.fill
+        , E.height E.fill
+        , E.spacing 20
+        , E.padding 50
+        ]
+        [ viewAdjustTime model
+        , Input.button
+            buttonStyles
+            { onPress = Just (Start AllDirections), label = E.text "Start" }
+        , viewRest model
+        ]
+
+
+viewIsolated : Model -> E.Element Msg
+viewIsolated model =
+    E.column
+        [ E.width E.fill
+        , E.height E.fill
+        , E.spacing 20
+        , E.padding 50
+        ]
+        [ viewAdjustTime model
+        , Input.slider
+            sliderStyles
+            { onChange = AdjustBpm
+            , label =
+                Input.labelAbove []
+                    (viewBpm model.bpm)
+            , min = 30
+            , max = 90
+            , step = Just 5
+            , value = model.bpm
+            , thumb = Input.defaultThumb
+            }
+        , Input.button
+            buttonStyles
+            { onPress = Just (Start Isolated), label = E.text "Start" }
+        , viewRest model
+        ]
+
+
+viewAdjustTime : Model -> E.Element Msg
+viewAdjustTime model =
+    Input.slider
+        sliderStyles
+        { onChange = AdjustTime
+        , label =
+            Input.labelAbove []
+                (viewTime Normal model.remaining)
+        , min = minutes 1
+        , max = minutes 5
+        , step = Just (seconds 30)
+        , value = model.remaining
+        , thumb = Input.defaultThumb
+        }
+
+
+viewRest : Model -> E.Element Msg
+viewRest model =
+    E.column [ E.width E.fill ]
+        [ h2 "Rest"
+        , Input.slider
+            sliderStyles
+            { onChange = AdjustRest
+            , label =
+                Input.labelAbove []
+                    (viewTime Normal model.rest)
+            , min = minutes 1
+            , max = minutes 5
+            , step = Just (seconds 30)
+            , value = model.rest
+            , thumb = Input.defaultThumb
+            }
+        , Input.button
+            buttonStyles
+            { onPress = Just (Start Rest), label = E.text "Start" }
+        ]
 
 
 h2 : String -> E.Element msg
@@ -296,13 +438,14 @@ type Msg
     = NoOp
     | Start Game
     | Pause
-    | Bpm
+    | TriggerCommand
     | TickSeconds
     | NextCommand Commands
     | AdjustTime Float
     | AdjustRest Float
     | AdjustBpm Float
     | StartOver
+    | ChangedTab Game
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -310,6 +453,9 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Cmd.none )
+
+        ChangedTab game ->
+            ( { model | game = game }, Cmd.none )
 
         StartOver ->
             ( { init | bpm = model.bpm }, Cmd.none )
@@ -326,12 +472,12 @@ update msg model =
         Start Rest ->
             ( { model | state = Started, game = Rest }, Cmd.none )
 
-        Start LegsAlternating ->
+        Start game ->
             let
                 getReady x =
                     Cmd.batch
                         [ Process.sleep (minutes 1 / model.bpm)
-                            |> Task.perform (\_ -> Start LegsAlternating)
+                            |> Task.perform (\_ -> Start game)
                         , speak
                             (if x == 0 then
                                 "go"
@@ -346,7 +492,7 @@ update msg model =
                     ( { model | state = GetReady 3 }, getReady 3 )
 
                 GetReady 0 ->
-                    ( { model | state = Started, game = LegsAlternating }
+                    ( { model | state = Started, game = game }
                     , Random.generate NextCommand ipsiContra
                     )
 
@@ -368,7 +514,10 @@ update msg model =
                         Rest ->
                             ( model.rest, \rest -> { model | rest = rest } )
 
-                        LegsAlternating ->
+                        Isolated ->
+                            ( model.remaining, \remaining -> { model | remaining = remaining } )
+
+                        AllDirections ->
                             ( model.remaining, \remaining -> { model | remaining = remaining } )
             in
             if time - seconds 1 <= 0 then
@@ -384,9 +533,15 @@ update msg model =
             else
                 ( setTime (time - seconds 1), Cmd.none )
 
-        Bpm ->
+        TriggerCommand ->
             ( model
-            , Random.generate NextCommand ipsiContra
+            , Random.generate NextCommand <|
+                case model.game of
+                    AllDirections ->
+                        allDirections
+
+                    _ ->
+                        ipsiContra
             )
 
         NextCommand command ->
@@ -395,7 +550,7 @@ update msg model =
                 Rest ->
                     Cmd.none
 
-                LegsAlternating ->
+                _ ->
                     speak (commandToString command)
             )
 
@@ -404,11 +559,16 @@ update msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions { state, bpm } =
+subscriptions { state, bpm, game } =
     case state of
         Started ->
             Sub.batch
-                [ Time.every (minutes 1 / bpm) (\_ -> Bpm)
+                [ case game of
+                    AllDirections ->
+                        Time.every (seconds 5) (\_ -> TriggerCommand)
+
+                    _ ->
+                        Time.every (minutes 1 / bpm) (\_ -> TriggerCommand)
                 , Time.every (seconds 1) (\_ -> TickSeconds)
                 ]
 
