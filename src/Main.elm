@@ -84,7 +84,7 @@ init : Model
 init =
     { state = NotStarted
     , game = Rest
-    , bpm = 30
+    , bpm = 40
     , remaining = minutes 2
     , rest = minutes 1
     }
@@ -150,7 +150,7 @@ view model =
                                 Input.labelAbove []
                                     (viewBpm model.bpm)
                             , min = 30
-                            , max = 60
+                            , max = 90
                             , step = Just 5
                             , value = model.bpm
                             , thumb = Input.defaultThumb
