@@ -19,8 +19,7 @@ import Task
 import Time
 import Url exposing (Url)
 import Widget
-import Widget.Style
-import Widget.Style.Material as Material
+import Widget.Material as Material
 
 
 type alias Model =
@@ -227,10 +226,10 @@ view model =
                             { selected = gameToInt model.game
                             , options =
                                 [ { text = "Isolated"
-                                  , icon = E.none
+                                  , icon = \_ -> E.none
                                   }
                                 , { text = "All Directions"
-                                  , icon = E.none
+                                  , icon = \_ -> E.none
                                   }
                                 ]
                             , onSelect = gameFromInt >> Maybe.map ChangedTab
@@ -672,6 +671,6 @@ backgroundColor =
     E.rgb 0.89 0.89 0.89
 
 
-fullWidthButton : Widget.Style.ButtonStyle msg -> Widget.Style.ButtonStyle msg
+fullWidthButton : Widget.ButtonStyle msg -> Widget.ButtonStyle msg
 fullWidthButton s =
-    { s | container = E.centerX :: s.container }
+    { s | elementButton = E.centerX :: s.elementButton }
