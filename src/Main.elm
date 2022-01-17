@@ -271,9 +271,16 @@ view model =
 
                             AllDirections ->
                                 E.none
-                        , Widget.textButton
-                            (fullWidthButton <| Material.outlinedButton Material.defaultPalette)
-                            { onPress = Just Pause, text = "Pause" }
+                        , case model.game of
+                            Rest _ ->
+                                Widget.textButton
+                                    (fullWidthButton <| Material.outlinedButton Material.defaultPalette)
+                                    { onPress = Just StartOver, text = "Quit" }
+
+                            _ ->
+                                Widget.textButton
+                                    (fullWidthButton <| Material.outlinedButton Material.defaultPalette)
+                                    { onPress = Just Pause, text = "Pause" }
                         ]
 
                 Paused ->
