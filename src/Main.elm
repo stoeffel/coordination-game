@@ -26,6 +26,7 @@ type alias Model =
     { state : State
     , game : Game
     , bpm : Float
+    , everyX : Float
     , remaining : Float
     , rest : Float
     , previousCmd : Maybe Command
@@ -171,6 +172,7 @@ init =
     { state = NotStarted
     , game = Isolated
     , bpm = 60
+    , everyX = 5
     , remaining = minutes 2
     , rest = minutes 1
     , previousCmd = Nothing
@@ -313,6 +315,18 @@ viewAllDirections model =
         , E.padding 50
         ]
         [ viewAdjustTime model
+        , Input.slider
+            sliderStyles
+            { onChange = AdjustEveryX
+            , label =
+                Input.labelAbove []
+                    (viewEveryX model.everyX)
+            , min = 1
+            , max = 8
+            , step = Just 1
+            , value = model.everyX
+            , thumb = Input.defaultThumb
+            }
         , Input.button
             buttonStyles
             { onPress = Just (Start AllDirections), label = E.text "Start" }
@@ -410,6 +424,13 @@ viewBpm bpm =
         |> E.el [ E.centerX, sizeToStyle Normal ]
 
 
+viewEveryX : Float -> E.Element msg
+viewEveryX n =
+    ("Every " ++ String.fromFloat n ++ "s")
+        |> E.text
+        |> E.el [ E.centerX, sizeToStyle Normal ]
+
+
 sizeToStyle : Size -> E.Attribute msg
 sizeToStyle size =
     case size of
@@ -462,6 +483,7 @@ type Msg
     | AdjustTime Float
     | AdjustRest Float
     | AdjustBpm Float
+    | AdjustEveryX Float
     | StartOver
     | ChangedTab Game
 
@@ -486,6 +508,9 @@ update msg model =
 
         AdjustBpm bpm ->
             ( { model | bpm = bpm }, Cmd.none )
+
+        AdjustEveryX everyX ->
+            ( { model | everyX = everyX }, Cmd.none )
 
         Start Rest ->
             ( { model | state = Started, game = Rest }, Cmd.none )
@@ -588,13 +613,13 @@ update msg model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions { state, bpm, game } =
+subscriptions { state, bpm, game, everyX } =
     case state of
         Started ->
             Sub.batch
                 [ case game of
                     AllDirections ->
-                        Time.every (seconds 5) (\_ -> TriggerCommand)
+                        Time.every (seconds everyX) (\_ -> TriggerCommand)
 
                     _ ->
                         Time.every (minutes 1 / bpm) (\_ -> TriggerCommand)
