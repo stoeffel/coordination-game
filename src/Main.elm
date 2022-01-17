@@ -458,7 +458,7 @@ update msg model =
             ( { model | game = game }, Cmd.none )
 
         StartOver ->
-            ( { init | bpm = model.bpm }, Cmd.none )
+            ( { init | bpm = model.bpm, game = model.game }, Cmd.none )
 
         AdjustTime remaining ->
             ( { model | remaining = remaining }, Cmd.none )
