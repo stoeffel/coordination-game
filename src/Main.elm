@@ -71,7 +71,7 @@ type State
 type Game
     = Isolated
     | AllDirections
-    | Rest
+    | Rest Game
 
 
 type Command
@@ -256,14 +256,14 @@ view model =
                         ]
                         [ viewTime Big
                             (case model.game of
-                                Rest ->
+                                Rest _ ->
                                     model.rest
 
                                 _ ->
                                     model.remaining
                             )
                         , case model.game of
-                            Rest ->
+                            Rest _ ->
                                 E.none
 
                             Isolated ->
@@ -284,14 +284,14 @@ view model =
                         ]
                         [ viewTime Big
                             (case model.game of
-                                Rest ->
+                                Rest _ ->
                                     model.rest
 
                                 _ ->
                                     model.remaining
                             )
                         , case model.game of
-                            Rest ->
+                            Rest _ ->
                                 E.none
 
                             Isolated ->
@@ -403,7 +403,7 @@ viewRest model =
             }
         , Widget.textButton
             (fullWidthButton <| Material.containedButton Material.defaultPalette)
-            { onPress = Just (Start Rest), text = "Start" }
+            { onPress = Just (Start (Rest model.game)), text = "Start" }
         ]
 
 
@@ -493,7 +493,18 @@ update msg model =
             ( { model | game = game }, Cmd.none )
 
         StartOver ->
-            ( { init | bpm = model.bpm, game = model.game }, Cmd.none )
+            ( { init
+                | bpm = model.bpm
+                , game =
+                    case model.game of
+                        Rest game ->
+                            game
+
+                        _ ->
+                            model.game
+              }
+            , Cmd.none
+            )
 
         AdjustTime remaining ->
             ( { model | remaining = remaining }, Cmd.none )
@@ -507,8 +518,8 @@ update msg model =
         AdjustEveryX everyX ->
             ( { model | everyX = everyX }, Cmd.none )
 
-        Start Rest ->
-            ( { model | state = Started, game = Rest }, Cmd.none )
+        Start (Rest game) ->
+            ( { model | state = Started, game = Rest game }, Cmd.none )
 
         Start game ->
             let
@@ -555,7 +566,7 @@ update msg model =
             let
                 ( time, setTime ) =
                     case model.game of
-                        Rest ->
+                        Rest _ ->
                             ( model.rest, \rest -> { model | rest = rest } )
 
                         Isolated ->
@@ -605,7 +616,7 @@ update msg model =
                             ( command, Tuple.second model.previousCmd )
               }
             , case model.game of
-                Rest ->
+                Rest _ ->
                     Cmd.none
 
                 _ ->
