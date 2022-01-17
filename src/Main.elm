@@ -30,7 +30,7 @@ type alias Model =
     , everyX : Float
     , remaining : Float
     , rest : Float
-    , previousCmd : Maybe Command
+    , previousCmd : ( Command, Command )
     }
 
 
@@ -89,8 +89,8 @@ ipsiContraGen =
     Random.uniform Ipsi [ Contra ]
 
 
-allDirectionsGen : Command -> Random.Generator Command
-allDirectionsGen prev =
+allDirectionsGen : ( Command, Command ) -> Random.Generator Command
+allDirectionsGen ( prevDir, prevIpsiContra ) =
     combinedGen
         |> Random.andThen
             (\c ->
@@ -105,12 +105,18 @@ allDirectionsGen prev =
             )
         |> Random.Extra.filter
             (\c ->
-                case prev of
+                case c of
                     Combined x y ->
-                        c /= x && c /= y && c /= prev
+                        x /= prevDir && y /= prevIpsiContra
 
-                    x ->
-                        c /= x
+                    Ipsi ->
+                        prevIpsiContra == Contra
+
+                    Contra ->
+                        prevIpsiContra == Ipsi
+
+                    _ ->
+                        c /= prevDir
             )
 
 
@@ -176,7 +182,7 @@ init =
     , everyX = 5
     , remaining = minutes 2
     , rest = minutes 1
-    , previousCmd = Nothing
+    , previousCmd = ( Forward, Contra )
     }
 
 
@@ -576,19 +582,28 @@ update msg model =
             , Random.generate NextCommand <|
                 case model.game of
                     AllDirections ->
-                        case model.previousCmd of
-                            Just prev ->
-                                allDirectionsGen prev
-
-                            Nothing ->
-                                combinedGen
+                        allDirectionsGen model.previousCmd
 
                     _ ->
                         ipsiContraGen
             )
 
         NextCommand command ->
-            ( { model | previousCmd = Just command }
+            ( { model
+                | previousCmd =
+                    case command of
+                        Contra ->
+                            ( Tuple.first model.previousCmd, command )
+
+                        Ipsi ->
+                            ( Tuple.first model.previousCmd, command )
+
+                        Combined x y ->
+                            ( x, y )
+
+                        _ ->
+                            ( command, Tuple.second model.previousCmd )
+              }
             , case model.game of
                 Rest ->
                     Cmd.none
