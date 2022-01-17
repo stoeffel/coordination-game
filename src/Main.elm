@@ -14,6 +14,7 @@ import Html.Attributes as Attr
 import Json.Decode as D
 import Process
 import Random
+import Random.Extra
 import Task
 import Time
 import Url exposing (Url)
@@ -27,6 +28,7 @@ type alias Model =
     , bpm : Float
     , remaining : Float
     , rest : Float
+    , previousCmd : Maybe Command
     }
 
 
@@ -70,42 +72,57 @@ type Game
     | Rest
 
 
-type Commands
+type Command
     = Ipsi
     | Contra
     | Outside
     | Inside
     | Forward
     | Backward
-    | Combined Commands Commands
+    | Combined Command Command
 
 
-ipsiContra : Random.Generator Commands
-ipsiContra =
+ipsiContraGen : Random.Generator Command
+ipsiContraGen =
     Random.uniform Ipsi [ Contra ]
 
 
-allDirections : Random.Generator Commands
-allDirections =
+allDirectionsGen : Command -> Random.Generator Command
+allDirectionsGen prev =
+    combinedGen
+        |> Random.andThen
+            (\c ->
+                Random.weighted ( 0.4, c )
+                    [ ( 0.1, Ipsi )
+                    , ( 0.1, Contra )
+                    , ( 0.1, Outside )
+                    , ( 0.1, Inside )
+                    , ( 0.1, Forward )
+                    , ( 0.1, Backward )
+                    ]
+            )
+        |> Random.Extra.filter
+            (\c ->
+                case prev of
+                    Combined x y ->
+                        c /= x && c /= y && c /= prev
+
+                    x ->
+                        c /= x
+            )
+
+
+combinedGen : Random.Generator Command
+combinedGen =
     Random.uniform Outside [ Inside, Forward, Backward ]
         |> Random.andThen
             (\first ->
                 Random.uniform Ipsi [ Contra ]
-                    |> Random.andThen
-                        (\second ->
-                            Random.weighted ( 0.4, Combined first second )
-                                [ ( 0.1, Ipsi )
-                                , ( 0.1, Contra )
-                                , ( 0.1, Outside )
-                                , ( 0.1, Inside )
-                                , ( 0.1, Forward )
-                                , ( 0.1, Backward )
-                                ]
-                        )
+                    |> Random.map (Combined first)
             )
 
 
-commandToString : Commands -> String
+commandToString : Command -> String
 commandToString command =
     case command of
         Ipsi ->
@@ -156,6 +173,7 @@ init =
     , bpm = 60
     , remaining = minutes 2
     , rest = minutes 1
+    , previousCmd = Nothing
     }
 
 
@@ -440,7 +458,7 @@ type Msg
     | Pause
     | TriggerCommand
     | TickSeconds
-    | NextCommand Commands
+    | NextCommand Command
     | AdjustTime Float
     | AdjustRest Float
     | AdjustBpm Float
@@ -493,7 +511,13 @@ update msg model =
 
                 GetReady 0 ->
                     ( { model | state = Started, game = game }
-                    , Random.generate NextCommand ipsiContra
+                    , Random.generate NextCommand <|
+                        case model.game of
+                            AllDirections ->
+                                combinedGen
+
+                            _ ->
+                                ipsiContraGen
                     )
 
                 GetReady x ->
@@ -538,14 +562,19 @@ update msg model =
             , Random.generate NextCommand <|
                 case model.game of
                     AllDirections ->
-                        allDirections
+                        case model.previousCmd of
+                            Just prev ->
+                                allDirectionsGen prev
+
+                            Nothing ->
+                                combinedGen
 
                     _ ->
-                        ipsiContra
+                        ipsiContraGen
             )
 
         NextCommand command ->
-            ( model
+            ( { model | previousCmd = Just command }
             , case model.game of
                 Rest ->
                     Cmd.none
