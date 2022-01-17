@@ -19,6 +19,7 @@ import Task
 import Time
 import Url exposing (Url)
 import Widget
+import Widget.Style
 import Widget.Style.Material as Material
 
 
@@ -264,9 +265,9 @@ view model =
 
                             AllDirections ->
                                 E.none
-                        , Input.button
-                            buttonStyles
-                            { onPress = Just Pause, label = E.text "Pause" }
+                        , Widget.textButton
+                            (fullWidthButton <| Material.outlinedButton Material.defaultPalette)
+                            { onPress = Just Pause, text = "Pause" }
                         ]
 
                 Paused ->
@@ -293,12 +294,12 @@ view model =
                             AllDirections ->
                                 E.none
                         , E.row [ E.spacing 20, E.centerX ]
-                            [ Input.button
-                                buttonStyles
-                                { onPress = Just (Start model.game), label = E.text "Continue" }
-                            , Input.button
-                                buttonStyles
-                                { onPress = Just StartOver, label = E.text "Quit" }
+                            [ Widget.textButton
+                                (fullWidthButton <| Material.containedButton Material.defaultPalette)
+                                { onPress = Just (Start model.game), text = "Continue" }
+                            , Widget.textButton
+                                (fullWidthButton <| Material.outlinedButton Material.defaultPalette)
+                                { onPress = Just StartOver, text = "Quit" }
                             ]
                         ]
             )
@@ -327,9 +328,9 @@ viewAllDirections model =
             , value = model.everyX
             , thumb = Input.defaultThumb
             }
-        , Input.button
-            buttonStyles
-            { onPress = Just (Start AllDirections), label = E.text "Start" }
+        , Widget.textButton
+            (fullWidthButton <| Material.containedButton Material.defaultPalette)
+            { onPress = Just (Start AllDirections), text = "Start" }
         , viewRest model
         ]
 
@@ -355,9 +356,9 @@ viewIsolated model =
             , value = model.bpm
             , thumb = Input.defaultThumb
             }
-        , Input.button
-            buttonStyles
-            { onPress = Just (Start Isolated), label = E.text "Start" }
+        , Widget.textButton
+            (fullWidthButton <| Material.containedButton Material.defaultPalette)
+            { onPress = Just (Start Isolated), text = "Start" }
         , viewRest model
         ]
 
@@ -394,9 +395,9 @@ viewRest model =
             , value = model.rest
             , thumb = Input.defaultThumb
             }
-        , Input.button
-            buttonStyles
-            { onPress = Just (Start Rest), label = E.text "Start" }
+        , Widget.textButton
+            (fullWidthButton <| Material.containedButton Material.defaultPalette)
+            { onPress = Just (Start Rest), text = "Start" }
         ]
 
 
@@ -458,18 +459,6 @@ sliderStyles =
             ]
             E.none
         )
-    ]
-
-
-buttonStyles =
-    [ E.padding 10
-    , E.centerX
-    , Background.color foregroundColor
-    , Font.color backgroundColor
-    , Border.color foregroundColor
-    , Border.width 1
-    , Border.shadow { blur = 2, color = foregroundColor, offset = ( 0, 0 ), size = 1 }
-    , Border.rounded 2
     ]
 
 
@@ -648,3 +637,8 @@ foregroundColor =
 backgroundColor : E.Color
 backgroundColor =
     E.rgb 0.89 0.89 0.89
+
+
+fullWidthButton : Widget.Style.ButtonStyle msg -> Widget.Style.ButtonStyle msg
+fullWidthButton s =
+    { s | container = E.centerX :: s.container }
