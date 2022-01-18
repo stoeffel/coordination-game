@@ -2,7 +2,6 @@ port module Main exposing (..)
 
 import Browser
 import Browser.Navigation as Navigation
-import Color exposing (Color)
 import Element as E exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -20,6 +19,7 @@ import Time
 import Url exposing (Url)
 import Widget
 import Widget.Material as Material
+import Widget.Material.Color as Color
 
 
 type alias Model =
@@ -31,32 +31,6 @@ type alias Model =
     , rest : Float
     , previousCmd : ( Command, Command )
     }
-
-
-gameFromInt : Int -> Maybe Game
-gameFromInt x =
-    case x of
-        0 ->
-            Just Isolated
-
-        1 ->
-            Just AllDirections
-
-        _ ->
-            Nothing
-
-
-gameToInt : Game -> Maybe Int
-gameToInt x =
-    case x of
-        Isolated ->
-            Just 0
-
-        AllDirections ->
-            Just 1
-
-        _ ->
-            Nothing
 
 
 type State
@@ -81,6 +55,32 @@ type Command
     | Forward
     | Backward
     | Combined Command Command
+
+
+gameFromInt : Int -> Maybe Game
+gameFromInt x =
+    case x of
+        0 ->
+            Just Isolated
+
+        1 ->
+            Just AllDirections
+
+        _ ->
+            Nothing
+
+
+gameToInt : Game -> Maybe Int
+gameToInt x =
+    case x of
+        Isolated ->
+            Just 0
+
+        AllDirections ->
+            Just 1
+
+        Rest _ ->
+            Nothing
 
 
 ipsiContraGen : Random.Generator Command
@@ -200,8 +200,12 @@ view model =
     { title = "Coordination"
     , body =
         [ E.layout
-            [ Font.color foregroundColor
-            , Background.color backgroundColor
+            [ Material.textGray Material.darkPalette
+                |> Color.fromColor
+                |> Font.color
+            , Material.lightGray Material.darkPalette
+                |> Color.fromColor
+                |> Background.color
             , Font.family
                 [ Font.typeface "Patrick Hand"
                 , Font.sansSerif
@@ -221,7 +225,7 @@ view model =
                     E.column [ E.centerX, E.centerY ] [ h2 (String.fromInt x) ]
 
                 NotStarted ->
-                    Widget.tab (Material.tab Material.defaultPalette)
+                    Widget.tab (Material.tab Material.darkPalette)
                         { tabs =
                             { selected = gameToInt model.game
                             , options =
@@ -273,12 +277,12 @@ view model =
                         , case model.game of
                             Rest _ ->
                                 Widget.textButton
-                                    (fullWidthButton <| Material.outlinedButton Material.defaultPalette)
+                                    (centered (Material.outlinedButton Material.darkPalette))
                                     { onPress = Just StartOver, text = "Quit" }
 
                             _ ->
                                 Widget.textButton
-                                    (fullWidthButton <| Material.outlinedButton Material.defaultPalette)
+                                    (centered (Material.outlinedButton Material.darkPalette))
                                     { onPress = Just Pause, text = "Pause" }
                         ]
 
@@ -288,7 +292,8 @@ view model =
                         , E.centerY
                         , E.spacing 20
                         ]
-                        [ viewTime Big
+                        [ h2 "Paused"
+                        , viewTime Big
                             (case model.game of
                                 Rest _ ->
                                     model.rest
@@ -296,23 +301,12 @@ view model =
                                 _ ->
                                     model.remaining
                             )
-                        , case model.game of
-                            Rest _ ->
-                                E.none
-
-                            Isolated ->
-                                viewBpm model.bpm
-
-                            AllDirections ->
-                                E.none
-                        , E.row [ E.spacing 20, E.centerX ]
-                            [ Widget.textButton
-                                (fullWidthButton <| Material.containedButton Material.defaultPalette)
-                                { onPress = Just (Start model.game), text = "Continue" }
-                            , Widget.textButton
-                                (fullWidthButton <| Material.outlinedButton Material.defaultPalette)
-                                { onPress = Just StartOver, text = "Quit" }
-                            ]
+                        , Widget.textButton
+                            (centered (Material.containedButton Material.darkPalette))
+                            { onPress = Just (Start model.game), text = "Continue" }
+                        , Widget.textButton
+                            (centered (Material.outlinedButton Material.darkPalette))
+                            { onPress = Just StartOver, text = "Quit" }
                         ]
             )
         ]
@@ -341,7 +335,7 @@ viewAllDirections model =
             , thumb = Input.defaultThumb
             }
         , Widget.textButton
-            (fullWidthButton <| Material.containedButton Material.defaultPalette)
+            (centered (Material.containedButton Material.darkPalette))
             { onPress = Just (Start AllDirections), text = "Start" }
         , viewRest model
         ]
@@ -369,7 +363,7 @@ viewIsolated model =
             , thumb = Input.defaultThumb
             }
         , Widget.textButton
-            (fullWidthButton <| Material.containedButton Material.defaultPalette)
+            (centered (Material.containedButton Material.darkPalette))
             { onPress = Just (Start Isolated), text = "Start" }
         , viewRest model
         ]
@@ -408,7 +402,7 @@ viewRest model =
             , thumb = Input.defaultThumb
             }
         , Widget.textButton
-            (fullWidthButton <| Material.containedButton Material.defaultPalette)
+            (centered (Material.containedButton Material.darkPalette))
             { onPress = Just (Start (Rest model.game)), text = "Start" }
         ]
 
@@ -425,9 +419,14 @@ type Size
 
 viewTime : Size -> Float -> E.Element msg
 viewTime size remaining =
-    (String.fromFloat (remaining / seconds 1) ++ "s")
+    timeToString remaining
         |> E.text
         |> E.el [ E.centerX, sizeToStyle size ]
+
+
+timeToString : Float -> String
+timeToString remaining =
+    String.fromFloat (remaining / seconds 1) ++ "s"
 
 
 viewBpm : Float -> E.Element msg
@@ -466,7 +465,9 @@ sliderStyles =
             [ E.width E.fill
             , E.height (E.px 2)
             , E.centerY
-            , Background.color foregroundColor
+            , Material.textGray Material.darkPalette
+                |> Color.fromColor
+                |> Background.color
             , Border.rounded 2
             ]
             E.none
@@ -661,16 +662,6 @@ onUrlChange _ =
     NoOp
 
 
-foregroundColor : E.Color
-foregroundColor =
-    E.rgb255 38 70 83
-
-
-backgroundColor : E.Color
-backgroundColor =
-    E.rgb 0.89 0.89 0.89
-
-
-fullWidthButton : Widget.ButtonStyle msg -> Widget.ButtonStyle msg
-fullWidthButton s =
+centered : Widget.ButtonStyle msg -> Widget.ButtonStyle msg
+centered s =
     { s | elementButton = E.centerX :: s.elementButton }
