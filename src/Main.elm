@@ -44,6 +44,7 @@ type State
 type Game
     = Isolated
     | AllDirections
+    | Sideways
     | Rest Game
 
 
@@ -66,6 +67,9 @@ gameFromInt x =
         1 ->
             Just AllDirections
 
+        2 ->
+            Just Sideways
+
         _ ->
             Nothing
 
@@ -78,6 +82,9 @@ gameToInt x =
 
         AllDirections ->
             Just 1
+
+        Sideways ->
+            Just 2
 
         Rest _ ->
             Nothing
@@ -116,6 +123,45 @@ allDirectionsGen ( prevDir, prevIpsiContra ) =
 
                     _ ->
                         c /= prevDir
+            )
+
+
+sidewaysGen : ( Command, Command ) -> Random.Generator Command
+sidewaysGen ( prevDir, prevIpsiContra ) =
+    sidewaysCombinedGen
+        |> Random.andThen
+            (\c ->
+                Random.weighted ( 0.6, c )
+                    [ ( 0.1, Ipsi )
+                    , ( 0.1, Contra )
+                    , ( 0.1, Outside )
+                    , ( 0.1, Inside )
+                    ]
+            )
+        |> Random.Extra.filter
+            (\c ->
+                case c of
+                    Combined x y ->
+                        x /= prevDir && y /= prevIpsiContra
+
+                    Ipsi ->
+                        prevIpsiContra == Contra
+
+                    Contra ->
+                        prevIpsiContra == Ipsi
+
+                    _ ->
+                        c /= prevDir
+            )
+
+
+sidewaysCombinedGen : Random.Generator Command
+sidewaysCombinedGen =
+    Random.uniform Outside [ Inside ]
+        |> Random.andThen
+            (\first ->
+                Random.uniform Ipsi [ Contra ]
+                    |> Random.map (Combined first)
             )
 
 
@@ -235,6 +281,9 @@ view model =
                                 , { text = "All Directions"
                                   , icon = \_ -> E.none
                                   }
+                                , { text = "Sideways"
+                                  , icon = \_ -> E.none
+                                  }
                                 ]
                             , onSelect = gameFromInt >> Maybe.map ChangedTab
                             }
@@ -245,7 +294,10 @@ view model =
                                         viewIsolated model
 
                                     Just AllDirections ->
-                                        viewAllDirections model
+                                        viewNonIsolated model AllDirections
+
+                                    Just Sideways ->
+                                        viewNonIsolated model Sideways
 
                                     _ ->
                                         E.none
@@ -273,6 +325,9 @@ view model =
                                 viewBpm model.bpm
 
                             AllDirections ->
+                                E.none
+
+                            Sideways ->
                                 E.none
                         , case model.game of
                             Rest _ ->
@@ -313,8 +368,8 @@ view model =
     }
 
 
-viewAllDirections : Model -> E.Element Msg
-viewAllDirections model =
+viewNonIsolated : Model -> Game -> E.Element Msg
+viewNonIsolated model game =
     E.column
         [ E.width E.fill
         , E.height E.fill
@@ -336,7 +391,7 @@ viewAllDirections model =
             }
         , Widget.textButton
             (centered (Material.containedButton Material.darkPalette))
-            { onPress = Just (Start AllDirections), text = "Start" }
+            { onPress = Just (Start game), text = "Start" }
         , viewRest model
         ]
 
@@ -581,6 +636,9 @@ update msg model =
 
                         AllDirections ->
                             ( model.remaining, \remaining -> { model | remaining = remaining } )
+
+                        Sideways ->
+                            ( model.remaining, \remaining -> { model | remaining = remaining } )
             in
             if time - seconds 1 <= 0 then
                 ( setTime 0
@@ -601,6 +659,9 @@ update msg model =
                 case model.game of
                     AllDirections ->
                         allDirectionsGen model.previousCmd
+
+                    Sideways ->
+                        sidewaysGen model.previousCmd
 
                     _ ->
                         ipsiContraGen
@@ -641,6 +702,9 @@ subscriptions { state, bpm, game, everyX } =
             Sub.batch
                 [ case game of
                     AllDirections ->
+                        Time.every (seconds everyX) (\_ -> TriggerCommand)
+
+                    Sideways ->
                         Time.every (seconds everyX) (\_ -> TriggerCommand)
 
                     _ ->
